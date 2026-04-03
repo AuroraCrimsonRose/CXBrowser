@@ -10,3 +10,7 @@ debug/
 
 # Cargo mutants
 **/mutants.out*/
+
+# Logo images (proprietary)
+/images/
+/Images/
