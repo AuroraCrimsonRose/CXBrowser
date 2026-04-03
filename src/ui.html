@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    /* Slate Lake (Dark) — default */
+    --bg: #0F1923;
+    --surface: #152231;
+    --overlay: #1E3044;
+    --border: #2A4057;
+    --text: #D4DDE8;
+    --subtext: #7A8FA6;
+    --accent1: #3E54D3;
+    --accent2: #4F80E2;
+    --accent3: #15CDCA;
+    --accent4: #4FE0B6;
+  }
+  body.light {
+    /* Marble (Light) */
+    --bg: #F5F5F7;
+    --surface: #EAEAEF;
+    --overlay: #DDDDE5;
+    --border: #C8C8D4;
+    --text: #1E1E2E;
+    --subtext: #5C5C72;
+    --accent1: #3E54D3;
+    --accent2: #4F80E2;
+    --accent3: #15CDCA;
+    --accent4: #4FE0B6;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ─── Tab Bar ─────────────────────────────────────────── */
+  #tabs-bar {
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    padding: 4px 8px 0;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-user-select: none;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--surface);
+    border-radius: 8px 8px 0 0;
+    font-size: 12px;
+    cursor: pointer;
+    max-width: 200px;
+    min-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--subtext);
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab.active { background: var(--overlay); color: var(--text); }
+  .tab:hover:not(.active) { background: var(--overlay); }
+  .tab-close {
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0.4;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .tab-close:hover { opacity: 1; }
+  #new-tab-btn {
+    background: none;
+    border: none;
+    color: var(--subtext);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  #new-tab-btn:hover { background: var(--overlay); color: var(--text); }
+
+  /* ─── Toolbar ─────────────────────────────────────────── */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    -webkit-user-select: none;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  #toolbar button {
+    background: var(--overlay);
+    border: none;
+    color: var(--text);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  #toolbar button:hover { background: var(--border); }
+  #toolbar button:active { background: var(--accent1); color: #fff; }
+
+  #url-bar {
+    flex: 1;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #url-bar:focus { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(79,128,226,0.2); }
+
+  #btn-theme {
+    font-size: 14px !important;
+    background: transparent !important;
+    color: var(--accent3) !important;
+  }
+  #btn-theme:hover { background: var(--overlay) !important; }
+
+  /* ─── Status Bar ──────────────────────────────────────── */
+  #status-bar {
+    padding: 2px 10px;
+    font-size: 11px;
+    color: var(--subtext);
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+  <div id="tabs-bar">
+    <div class="tab active" data-id="1"><span class="tab-title">New Tab</span><span class="tab-close">&times;</span></div>
+    <button id="new-tab-btn">+</button>
+  </div>
+  <div id="toolbar">
+    <button id="btn-back" title="Back">&#8592;</button>
+    <button id="btn-forward" title="Forward">&#8594;</button>
+    <button id="btn-reload" title="Reload">&#8635;</button>
+    <input id="url-bar" type="text" placeholder="Search or enter URL..." spellcheck="false" autocomplete="off">
+    <button id="btn-home" title="Home">&#8962;</button>
+    <button id="btn-theme" title="Toggle Theme">&#9681;</button>
+  </div>
+  <div id="status-bar">Ready</div>
+
+<script>
+  const urlBar = document.getElementById('url-bar');
+  const statusBar = document.getElementById('status-bar');
+
+  // Use WebView2's native postMessage for IPC
+  function sendMsg(msg) {
+    window.chrome.webview.postMessage(JSON.stringify(msg));
+  }
+
+  function normalizeUrl(input) {
+    input = input.trim();
+    if (!input) return '';
+    // Block dangerous schemes
+    if (/^(javascript|data|vbscript):/i.test(input)) return '';
+    if (/^https?:\/\//i.test(input)) return input;
+    if (/^[\w-]+(\.[\w-]+)+/.test(input)) return 'https://' + input;
+    return 'https://www.google.com/search?q=' + encodeURIComponent(input);
+  }
+
+  urlBar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const url = normalizeUrl(urlBar.value);
+      if (url) {
+        sendMsg({ type: 'navigate', url: url });
+        statusBar.textContent = 'Loading...';
+      }
+    }
+  });
+
+  document.getElementById('btn-back').addEventListener('click', () => sendMsg({ type: 'back' }));
+  document.getElementById('btn-forward').addEventListener('click', () => sendMsg({ type: 'forward' }));
+  document.getElementById('btn-reload').addEventListener('click', () => sendMsg({ type: 'reload' }));
+  document.getElementById('btn-home').addEventListener('click', () => {
+    urlBar.value = '';
+    sendMsg({ type: 'home' });
+    statusBar.textContent = 'Ready';
+  });
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    sendMsg({ type: 'toggle_theme' });
+  });
+
+  // Tab management (placeholder for v0.2)
+  document.getElementById('new-tab-btn').addEventListener('click', () => {
+    // Will send new_tab in v0.2
+  });
+
+  // ─── Called from Rust ─────────────────────────────────
+  window.updateUrl = function(url) { urlBar.value = url; };
+  window.updateStatus = function(s) { statusBar.textContent = s; };
+
+  window.setTheme = function(dark) {
+    if (dark) {
+      document.body.classList.remove('light');
+    } else {
+      document.body.classList.add('light');
+    }
+  };
+
+  window.updateTabs = function(tabs, activeId) {
+    const bar = document.getElementById('tabs-bar');
+    const btn = document.getElementById('new-tab-btn');
+    bar.querySelectorAll('.tab').forEach(t => t.remove());
+    tabs.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'tab' + (t.id === activeId ? ' active' : '');
+      el.dataset.id = t.id;
+      const titleText = document.createTextNode(t.title || 'New Tab');
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'tab-title';
+      titleSpan.appendChild(titleText);
+      const closeSpan = document.createElement('span');
+      closeSpan.className = 'tab-close';
+      closeSpan.textContent = '\u00d7';
+      el.appendChild(titleSpan);
+      el.appendChild(closeSpan);
+      bar.insertBefore(el, btn);
+    });
+  };
+</script>
+</body>
+</html>
