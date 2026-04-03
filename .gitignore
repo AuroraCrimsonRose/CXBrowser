@@ -14,3 +14,20 @@ debug/
 # Logo images (proprietary)
 /images/
 /Images/
+
+# IDE — VS Code
+.vscode/
+
+# IDE — JetBrains
+.idea/
+*.iml
+
+# OS generated
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs & temp
+*.log
+*.tmp
+*.swp
